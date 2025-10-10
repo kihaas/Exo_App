@@ -1,6 +1,7 @@
 import socket
 import threading
 import logging
+import time
 
 
 class AdvancedEchoServer:
@@ -29,7 +30,6 @@ class AdvancedEchoServer:
                 client_socket, client_address = self.socket.accept()
                 self.logger.info(f"Подключен клиент: {client_address}")
 
-                # Обрабатываем каждого клиента в отдельном потоке
                 client_thread = threading.Thread(
                     target=self.handle_client_connection,
                     args=(client_socket, client_address)
@@ -38,7 +38,7 @@ class AdvancedEchoServer:
                 client_thread.start()
 
         except KeyboardInterrupt:
-            self.logger.info("Получен сигнал прерывания")
+            self.logger.info("Получен сигнал прерывания — завершение работы.")
         except Exception as e:
             self.logger.error(f"Ошибка сервера: {e}")
         finally:
@@ -57,27 +57,43 @@ class AdvancedEchoServer:
             self.logger.info(f"Соединение с {client_address} закрыто")
 
     def handle_client_messages(self, client_socket, client_address):
-        client_socket.settimeout(30.0)  # Таймаут 30 секунд
+        client_socket.settimeout(30.0)  # Таймаут 30 секунд на стороне сервера
 
         while True:
             try:
-                # Получаем сообщение от клиента
                 data = client_socket.recv(1024).decode('utf-8')
 
-                # Проверяем, не закрыл ли клиент соединение
                 if not data:
                     self.logger.info(f"Клиент {client_address} закрыл соединение")
                     break
 
-                self.logger.info(f"Получено от {client_address}: {data}")
+                command = data.strip().upper()
+                self.logger.info(f"Получено от {client_address}: {command}")
 
-                # Проверяем команду выхода
-                if data.strip().lower() == 'exit':
-                    self.logger.info(f"Клиент {client_address} запросил отключение")
+                # Команда выхода
+                if command == 'EXIT':
                     client_socket.send("До свидания! Соединение закрыто.".encode('utf-8'))
                     break
 
-                # Отправляем эхо-ответ
+                # Команда TIME — отправляем текущее время
+                elif command == 'TIME':
+                    current_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+                    client_socket.send(f"Текущее время: {current_time}".encode('utf-8'))
+                    continue
+
+                # Команда HELP — список доступных команд
+                elif command == 'HELP':
+                    help_text = (
+                        "Доступные команды:\n"
+                        "TIME — получить текущее время\n"
+                        "EXIT — завершить соединение\n"
+                        "HELP — показать это сообщение\n"
+                        "любое другое сообщение — эхо-ответ"
+                    )
+                    client_socket.send(help_text.encode('utf-8'))
+                    continue
+
+                # Обычный эхо-ответ
                 response = f"ECHO: {data}"
                 client_socket.send(response.encode('utf-8'))
                 self.logger.info(f"Отправлено {client_address}: {response}")

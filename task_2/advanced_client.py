@@ -11,6 +11,7 @@ class AdvancedEchoClient:
         try:
             # Создаем сокет и подключаемся к серверу
             client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client_socket.settimeout(5)  # Таймаут 5 секунд на приём данных
             client_socket.connect((self.host, self.port))
 
             print(f"Подключено к серверу {self.host}:{self.port}")
@@ -18,14 +19,15 @@ class AdvancedEchoClient:
 
             with client_socket:
                 while True:
-                    # Получаем сообщение от пользователя
-                    message = input("> ")
+                    message = input("> ").strip()
 
                     # Отправляем сообщение серверу
+                    if not message:
+                        continue
                     client_socket.send(message.encode('utf-8'))
 
                     # Проверяем команду выхода
-                    if message.strip().lower() == 'exit':
+                    if message.lower() == 'exit':
                         print("Завершение сессии...")
                         break
 
@@ -34,10 +36,9 @@ class AdvancedEchoClient:
                         response = client_socket.recv(1024).decode('utf-8')
                         print(f"Сервер: {response}")
                     except socket.timeout:
-                        print("Таймаут при ожидании ответа от сервера")
+                        print("Таймаут при ожидании ответа от сервера (5 секунд)")
                         break
 
-                    # Небольшая задержка для удобства чтения
                     time.sleep(0.1)
 
         except ConnectionRefusedError:
